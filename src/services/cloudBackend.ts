@@ -8,6 +8,7 @@
  */
 
 import { AcademicField, Subject, Chapter, BoardPhoto, StudyPDF } from '../types';
+import { supabase, uploadPhotoToSupabase, uploadPdfToSupabase } from './supabase';
 
 export class DeviceOfflineError extends Error {
   constructor(message = 'Device is offline. Cannot reach cloud servers.') {
@@ -327,7 +328,7 @@ class CloudBackendServiceManager {
     const mergedSubjects = Array.from(subjectMap.values());
     const mergedChapters = Array.from(chapterMap.values());
 
-    // Save to Cloud Storage partition
+    // Save to Cloud Storage partition (IndexedDB local cache)
     await this.saveCloudMeta({
       userId,
       fields: mergedFields,
@@ -335,6 +336,41 @@ class CloudBackendServiceManager {
       chapters: mergedChapters,
       lastSyncedAt: now,
     });
+
+    // When online, also sync structured records to Supabase Postgres database
+    if (this.isOnline()) {
+      try {
+        // Upsert subjects
+        if (mergedSubjects.length > 0) {
+          const sbSubjects = mergedSubjects.map((s) => ({
+            id: s.id,
+            user_id: userId,
+            name: s.name,
+            code: s.fieldId || '',
+            color: s.colorTheme || 'blue',
+            icon: s.iconName || 'BookOpen',
+            updated_at: new Date(s.updatedAt || now).toISOString(),
+          }));
+          await supabase.from('subjects').upsert(sbSubjects, { onConflict: 'id' });
+        }
+
+        // Upsert chapters
+        if (mergedChapters.length > 0) {
+          const sbChapters = mergedChapters.map((c) => ({
+            id: c.id,
+            user_id: userId,
+            subject_id: c.subjectId,
+            title: c.title,
+            description: `Chapter ${c.chapterNumber}`,
+            order_index: c.orderIndex,
+            updated_at: new Date(c.updatedAt || now).toISOString(),
+          }));
+          await supabase.from('chapters').upsert(sbChapters, { onConflict: 'id' });
+        }
+      } catch (sbErr) {
+        console.warn('Supabase structured data sync background notice:', sbErr);
+      }
+    }
 
     return {
       mergedFields,
@@ -345,7 +381,7 @@ class CloudBackendServiceManager {
   }
 
   /**
-   * Uploads a single photograph to cloud object storage (IndexedDB backed).
+   * Uploads a single photograph to cloud object storage (Supabase Storage + IndexedDB backed).
    * Protects against duplicate uploads by checking stable photo ID and checksum/timestamp.
    */
   async uploadPhoto(
@@ -355,10 +391,42 @@ class CloudBackendServiceManager {
     await this.simulateNetworkDelay(150);
 
     const now = Date.now();
+    let cloudUrl = photo.cloudUrl || `cloud://users/${userId}/photos/${photo.id}.jpg`;
+
+    // Attempt real upload to Supabase Storage bucket 'study_photos'
+    const photoData = photo.localDataUrl || photo.originalDataUrl || photo.thumbnailUrl;
+    if (this.isOnline() && photoData) {
+      try {
+        const uploadRes = await uploadPhotoToSupabase(
+          userId,
+          photo.id,
+          photoData
+        );
+        if (uploadRes?.publicUrl) {
+          cloudUrl = uploadRes.publicUrl;
+
+          // Save photo row to Supabase Postgres 'photos' table
+          await supabase.from('photos').upsert({
+            id: photo.id,
+            user_id: userId,
+            subject_id: '',
+            chapter_id: photo.chapterId,
+            title: `Photo ${photo.orderIndex + 1}`,
+            storage_path: uploadRes.storagePath,
+            public_url: uploadRes.publicUrl,
+            captured_at: new Date(photo.createdAt || now).toISOString(),
+            updated_at: new Date(now).toISOString(),
+          }, { onConflict: 'id' });
+        }
+      } catch (err) {
+        console.warn('Supabase photo upload background notice:', err);
+      }
+    }
+
     const cloudPhoto: BoardPhoto = {
       ...photo,
       userId,
-      cloudUrl: photo.cloudUrl || `cloud://users/${userId}/photos/${photo.id}.jpg`,
+      cloudUrl,
       syncStatus: 'synced',
       lastSyncedAt: now,
       updatedAt: photo.updatedAt || now,
@@ -436,7 +504,7 @@ class CloudBackendServiceManager {
   }
 
   /**
-   * Uploads a generated study PDF metadata & binary to cloud storage (IndexedDB backed)
+   * Uploads a generated study PDF metadata & binary to cloud storage (Supabase Storage + IndexedDB backed)
    */
   async uploadPDF(
     userId: string,
@@ -445,10 +513,43 @@ class CloudBackendServiceManager {
     await this.simulateNetworkDelay(150);
 
     const now = Date.now();
+    let cloudUrl = pdf.cloudUrl || `cloud://users/${userId}/pdfs/${pdf.id}.pdf`;
+
+    // Attempt real upload to Supabase Storage bucket 'study_pdfs'
+    const pdfData = pdf.pdfDataUrl || pdf.localBlobUrl;
+    if (this.isOnline() && pdfData) {
+      try {
+        const uploadRes = await uploadPdfToSupabase(
+          userId,
+          pdf.id,
+          pdfData
+        );
+        if (uploadRes?.publicUrl) {
+          cloudUrl = uploadRes.publicUrl;
+
+          // Save row to Supabase Postgres 'pdfs' table
+          await supabase.from('pdfs').upsert({
+            id: pdf.id,
+            user_id: userId,
+            subject_id: pdf.subjectId,
+            chapter_id: pdf.chapterId || null,
+            title: pdf.title,
+            storage_path: uploadRes.storagePath,
+            public_url: uploadRes.publicUrl,
+            size_bytes: pdf.fileSizeBytes || 0,
+            page_count: pdf.pageCount || 1,
+            created_at: new Date(pdf.createdAt || now).toISOString(),
+          }, { onConflict: 'id' });
+        }
+      } catch (err) {
+        console.warn('Supabase PDF upload background notice:', err);
+      }
+    }
+
     const cloudPdf: StudyPDF = {
       ...pdf,
       userId,
-      cloudUrl: pdf.cloudUrl || `cloud://users/${userId}/pdfs/${pdf.id}.pdf`,
+      cloudUrl,
       syncStatus: 'synced',
       updatedAt: pdf.updatedAt || now,
     };
@@ -557,6 +658,18 @@ class CloudBackendServiceManager {
   async deleteAccountData(userId: string): Promise<void> {
     await this.simulateNetworkDelay(150);
     try {
+      if (this.isOnline()) {
+        try {
+          await supabase.from('subjects').delete().eq('user_id', userId);
+          await supabase.from('chapters').delete().eq('user_id', userId);
+          await supabase.from('photos').delete().eq('user_id', userId);
+          await supabase.from('pdfs').delete().eq('user_id', userId);
+          await supabase.from('profiles').delete().eq('id', userId);
+        } catch (sbErr) {
+          console.warn('Supabase remote account deletion notice:', sbErr);
+        }
+      }
+
       const db = await this.getDB();
       
       // 1. Delete Meta
