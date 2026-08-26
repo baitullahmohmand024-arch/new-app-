@@ -1,0 +1,226 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* Brand & Surface System Tokens (Phase 1) */
+    --color-primary: #3b82f6;
+    --color-primary-dark: #1d4ed8;
+    --color-primary-light: #60a5fa;
+    --color-secondary: #7c3aed;
+    --color-accent: #f59e0b;
+    --color-success: #10b981;
+    --color-warning: #f97316;
+    --color-danger: #ef4444;
+    --color-pink: #ec4899;
+
+    /* Light Theme Palette */
+    --bg-page-light: #f6f8fc;
+    --bg-surface-light: #ffffff;
+    --bg-card-light: #ffffff;
+    --border-light: rgba(226, 232, 240, 0.9);
+    --border-subtle-light: rgba(241, 245, 249, 0.95);
+    --text-primary-light: #0f172a;
+    --text-secondary-light: #64748b;
+    
+    /* Dark Theme Palette */
+    --bg-page-dark: #0a0f1d;
+    --bg-surface-dark: #0f172a;
+    --bg-card-dark: #131d36;
+    --bg-card-elevated-dark: #1a2647;
+    --border-dark: rgba(30, 41, 59, 0.85);
+    --border-subtle-dark: rgba(51, 65, 85, 0.5);
+    --text-primary-dark: #f8fafc;
+    --text-secondary-dark: #94a3b8;
+
+    /* Subject Specific Color System (Phase 1) */
+    --subject-math: #3b82f6;
+    --subject-physics: #8b5cf6;
+    --subject-chemistry: #10b981;
+    --subject-cs: #f97316;
+    --subject-english: #ec4899;
+    --subject-biology: #06b6d4;
+  }
+
+  html {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, .font-heading {
+    font-family: 'Poppins', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+
+  body {
+    @apply antialiased selection:bg-blue-500/25 selection:text-blue-950 dark:selection:text-blue-200 text-slate-900 dark:text-slate-100;
+    background-color: var(--bg-page-light);
+  }
+
+  .dark body, body.dark {
+    background-color: var(--bg-page-dark);
+  }
+
+  /* Smooth custom luxury scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300/80 dark:bg-slate-700/80 rounded-full hover:bg-slate-400 dark:hover:bg-slate-600;
+  }
+
+  /* No scrollbar utility */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Luxury Design System - Keyframe Animations & Micro-Interactions */
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes modalEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.985) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes checkmarkPop {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes shutterFlash {
+  0% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes subtleShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Micro-interaction Animation Classes */
+.animate-page-enter {
+  animation: pageEnter 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-modal-enter {
+  animation: modalEnter 240ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-checkmark-pop {
+  animation: checkmarkPop 180ms cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.animate-shutter-flash {
+  animation: shutterFlash 220ms ease-out forwards;
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(226, 232, 240, 0.6) 0%,
+    rgba(241, 245, 249, 0.9) 50%,
+    rgba(226, 232, 240, 0.6) 100%
+  );
+  background-size: 200% 100%;
+  animation: subtleShimmer 1.8s infinite ease-in-out;
+}
+
+.dark .skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(26, 38, 71, 0.6) 0%,
+    rgba(37, 53, 94, 0.85) 50%,
+    rgba(26, 38, 71, 0.6) 100%
+  );
+  background-size: 200% 100%;
+  animation: subtleShimmer 1.8s infinite ease-in-out;
+}
+
+/* Luxury Surfaces, Cards & Glass Helpers */
+.luxury-surface {
+  @apply bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 shadow-sm;
+}
+
+.luxury-card {
+  @apply bg-white dark:bg-[#131d36] border border-slate-200/80 dark:border-slate-800/80 shadow-sm rounded-2xl transition-all duration-200 ease-out;
+}
+
+.luxury-card-interactive {
+  @apply bg-white dark:bg-[#131d36] border border-slate-200/80 dark:border-slate-800/80 shadow-sm rounded-2xl transition-all duration-200 ease-out cursor-pointer hover:border-indigo-400/80 dark:hover:border-indigo-500/70 hover:shadow-md hover:shadow-indigo-500/10 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.985] active:shadow-xs touch-manipulation;
+}
+
+.luxury-modal {
+  @apply bg-white dark:bg-[#0f172a] rounded-3xl border border-slate-200/90 dark:border-slate-800/90 shadow-2xl;
+}
+
+.glass-surface {
+  @apply bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 shadow-xs;
+}
+
+.glass-card {
+  @apply bg-white dark:bg-[#131d36] border border-slate-200/80 dark:border-slate-800/80 shadow-xs rounded-2xl transition-all duration-200 ease-out;
+}
+
+.glass-card-interactive {
+  @apply bg-white dark:bg-[#131d36] border border-slate-200/80 dark:border-slate-800/80 shadow-xs rounded-2xl transition-all duration-200 ease-out cursor-pointer hover:border-indigo-400/80 dark:hover:border-indigo-500/70 hover:shadow-md hover:shadow-indigo-500/8 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.985] active:shadow-xs touch-manipulation;
+}
+
+/* Accessible Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+    transform: none !important;
+  }
+}
