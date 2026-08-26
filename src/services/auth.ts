@@ -39,6 +39,106 @@ export const AuthService = {
   },
 
   /**
+   * Initializes auth session, checking Supabase active session (including OAuth redirect hash)
+   * and local storage fallback, while cleaning OAuth tokens from URL.
+   */
+  async initAuthSession(onUserChange?: (user: UserProfile | null) => void): Promise<UserProfile | null> {
+    try {
+      // 1. Check Supabase session (handles OAuth redirect hash token parsing automatically)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const sbUser = session.user;
+        const email = sbUser.email || 'student@gmail.com';
+        const name =
+          (sbUser.user_metadata?.full_name as string) ||
+          (sbUser.user_metadata?.name as string) ||
+          email.split('@')[0];
+        const avatar =
+          (sbUser.user_metadata?.avatar_url as string) ||
+          (sbUser.user_metadata?.picture as string) ||
+          undefined;
+        const userId = sbUser.id;
+
+        const profile = this.syncUserProfile(userId, email, name, avatar);
+
+        // Clean up ugly OAuth hash in the URL address bar
+        if (
+          typeof window !== 'undefined' &&
+          window.location.hash &&
+          window.location.hash.includes('access_token=')
+        ) {
+          window.history.replaceState(
+            null,
+            '',
+            window.location.pathname + window.location.search
+          );
+        }
+
+        if (onUserChange) onUserChange(profile);
+        return profile;
+      }
+    } catch (err) {
+      console.warn('Supabase session initialization notice:', err);
+    }
+
+    // 2. Fallback to localStorage session
+    const localUser = this.getCurrentUser();
+    if (localUser && onUserChange) {
+      onUserChange(localUser);
+    }
+    return localUser;
+  },
+
+  /**
+   * Subscribes to live Supabase Auth state changes (e.g. login, logout, OAuth completion).
+   */
+  onAuthStateChange(callback: (user: UserProfile | null) => void) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (session?.user) {
+          const sbUser = session.user;
+          const email = sbUser.email || 'student@gmail.com';
+          const name =
+            (sbUser.user_metadata?.full_name as string) ||
+            (sbUser.user_metadata?.name as string) ||
+            email.split('@')[0];
+          const avatar =
+            (sbUser.user_metadata?.avatar_url as string) ||
+            (sbUser.user_metadata?.picture as string) ||
+            undefined;
+          const userId = sbUser.id;
+
+          const profile = this.syncUserProfile(userId, email, name, avatar);
+
+          if (
+            typeof window !== 'undefined' &&
+            window.location.hash &&
+            window.location.hash.includes('access_token=')
+          ) {
+            window.history.replaceState(
+              null,
+              '',
+              window.location.pathname + window.location.search
+            );
+          }
+
+          callback(profile);
+        } else {
+          // If explicitly signed out in Supabase
+          const localUser = this.getCurrentUser();
+          if (!localUser) {
+            callback(null);
+          }
+        }
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  },
+
+  /**
    * Converts a Firebase user or student credentials into our standard UserProfile.
    */
   syncUserProfile(

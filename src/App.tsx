@@ -110,6 +110,25 @@ function MainApp() {
   // 11. AI Academic Teacher Context State
   const [teacherContext, setTeacherContext] = useState<AITeacherContext | undefined>(undefined);
 
+  // Initialize & Listen for Supabase Authentication State & Google OAuth Hash Redirects
+  useEffect(() => {
+    AuthService.initAuthSession((user) => {
+      if (user) {
+        setCurrentUser(user);
+      }
+    });
+
+    const unsubscribe = AuthService.onAuthStateChange((user) => {
+      if (user) {
+        setCurrentUser(user);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
   const handleNavigateToTeacher = (mode?: AITeacherStudyMode) => {
     setTeacherContext({
       fieldId: currentField?.id,
