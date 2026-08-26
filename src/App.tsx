@@ -112,13 +112,16 @@ function MainApp() {
 
   // Initialize & Listen for Supabase Authentication State & Google OAuth Hash Redirects
   useEffect(() => {
+    console.log('[App Debug] Initializing Auth session on App mount...');
     AuthService.initAuthSession((user) => {
       if (user) {
+        console.log('[App Debug] initAuthSession resolved user:', user.email);
         setCurrentUser(user);
       }
     });
 
     const unsubscribe = AuthService.onAuthStateChange((user) => {
+      console.log('[App Debug] onAuthStateChange received user:', user?.email);
       if (user) {
         setCurrentUser(user);
       }
@@ -290,13 +293,17 @@ function MainApp() {
 
   // Google Authentication Handler
   const handleGoogleSignIn = async (email?: string, name?: string) => {
+    console.log('[App Debug] handleGoogleSignIn triggered', { email, name });
     const user = await AuthService.signInWithGoogle(email, name);
-    setCurrentUser(user);
-    setActiveTab('study');
-    setViewMode('dashboard');
-    setActiveSubject(null);
-    setActiveChapter(null);
-    setIsCameraOpen(false);
+    if (user && user.id !== 'usr_oauth_pending') {
+      console.log('[App Debug] User signed in immediately:', user.email);
+      setCurrentUser(user);
+      setActiveTab('study');
+      setViewMode('dashboard');
+      setActiveSubject(null);
+      setActiveChapter(null);
+      setIsCameraOpen(false);
+    }
   };
 
   // Sign Out Handler

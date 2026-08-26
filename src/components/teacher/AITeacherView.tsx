@@ -205,10 +205,14 @@ export const AITeacherView: React.FC<AITeacherViewProps> = ({
       );
     } catch (err: any) {
       console.error('Failed to generate MCQ:', err);
+      const detailedError =
+        err?.message && typeof err.message === 'string' && err.message.length > 3
+          ? err.message
+          : "Sorry, I couldn't generate the question right now. Please try again.";
       const errorMsg: AITeacherMessage = {
         id: `msg_err_${Date.now()}`,
         sender: 'teacher',
-        text: "Sorry, I couldn't answer right now. Please try again.",
+        text: detailedError,
         timestamp: Date.now(),
         isError: true,
       };
@@ -345,10 +349,14 @@ export const AITeacherView: React.FC<AITeacherViewProps> = ({
       }
     } catch (err: any) {
       console.error('Chat error:', err);
+      const detailedError =
+        err?.message && typeof err.message === 'string' && err.message.length > 3
+          ? err.message
+          : "Sorry, I couldn't answer right now. Please try again.";
       const errorMsg: AITeacherMessage = {
         id: `msg_err_${Date.now()}`,
         sender: 'teacher',
-        text: "Sorry, I couldn't answer right now. Please try again.",
+        text: detailedError,
         timestamp: Date.now(),
         isError: true,
       };

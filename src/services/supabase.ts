@@ -28,21 +28,35 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 export type { SupabaseUser };
 
 /**
+ * Gets clean OAuth Redirect URL based on the current window location.
+ */
+export function getOAuthRedirectUrl(): string {
+  if (typeof window === 'undefined') return '';
+  const url = `${window.location.origin}${window.location.pathname}`;
+  return url.endsWith('/') ? url : `${url}/`;
+}
+
+/**
  * Sign in with Google via Supabase OAuth
  */
 export async function signInWithGoogleSupabase() {
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const redirectUrl = getOAuthRedirectUrl();
+  console.log('[Supabase Auth Debug] Initiating Google OAuth with redirectTo:', redirectUrl);
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: origin,
+      redirectTo: redirectUrl,
       queryParams: {
         access_type: 'offline',
         prompt: 'select_account',
       },
     },
   });
-  if (error) throw error;
+  if (error) {
+    console.error('[Supabase Auth Debug] signInWithOAuth error:', error);
+    throw error;
+  }
   return data;
 }
 

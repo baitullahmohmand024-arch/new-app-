@@ -79,8 +79,9 @@ async function generateContentWithRetry(
   }
 ) {
   const modelsToTry = [
-    options.primaryModel || 'gemini-3.6-flash',
+    options.primaryModel || 'gemini-3.7-flash',
     'gemini-flash-latest',
+    'gemini-3.1-flash-lite',
   ];
 
   let lastError: any = null;
@@ -149,7 +150,7 @@ app.get('/api/ai-teacher/health', (req, res) => {
   res.json({
     status: 'ok',
     isConfigured: hasKey,
-    model: 'gemini-3.6-flash',
+    model: 'gemini-3.7-flash',
   });
 });
 
@@ -208,7 +209,7 @@ app.post('/api/ai-teacher/chat', rateLimitMiddleware, async (req, res) => {
 Respond as the AI Academic Teacher following all academic guidelines.`;
 
     const response = await generateContentWithRetry(ai, {
-      primaryModel: 'gemini-3.6-flash',
+      primaryModel: 'gemini-3.7-flash',
       contents: fullPrompt,
       config: {
         systemInstruction: ACADEMIC_TEACHER_SYSTEM_INSTRUCTION,
@@ -281,7 +282,7 @@ CRITICAL MCQ CREATION RULES:
 Return strictly in the specified JSON schema.`;
 
     const response = await generateContentWithRetry(ai, {
-      primaryModel: 'gemini-3.6-flash',
+      primaryModel: 'gemini-3.7-flash',
       contents: prompt,
       config: {
         systemInstruction: ACADEMIC_TEACHER_SYSTEM_INSTRUCTION,
@@ -400,3 +401,5 @@ async function startServer() {
 }
 
 startServer();
+
+export default app;
